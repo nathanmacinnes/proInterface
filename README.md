@@ -20,7 +20,7 @@ pro.on('authReceived', function (error, controlStatus) {
   pro.on('newSlide', function (slideDetails) {
     ...
   });
-  proInterface.getStageDisplayLayouts(function (layouts, current) {
+  pro.getStageDisplayLayouts(function (layouts, current) {
     ...
   });
   pro.setStageDisplayLayout('Default');
