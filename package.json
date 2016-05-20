@@ -1,0 +1,22 @@
+{
+  "name": "proInterface",
+  "version": "0.1.0",
+  "description": "A Javascript interface to interact with ProPresenter",
+  "main": "lib/proInterface.js",
+  "repository": "",
+  "author": "Nathan MacInnes",
+  "devDependencies": {
+    "chance": "^1.0.3",
+    "expect.js": "~0.3.1",
+    "grunt": "~0.4.4",
+    "grunt-contrib-jshint": "~0.10.0",
+    "grunt-contrib-watch": "~0.6.1",
+    "grunt-mocha-test": "~0.10.2",
+    "injectr": "~0.5.1",
+    "jshint": "~2.5.0",
+    "pretendr": "~0.5.2"
+  },
+  "dependencies": {
+    "websocket": "^1.0.23"
+  }
+}
