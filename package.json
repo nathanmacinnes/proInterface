@@ -1,5 +1,5 @@
 {
-  "name": "proInterface",
+  "name": "prointerface",
   "version": "0.1.0",
   "description": "A Javascript interface to interact with ProPresenter",
   "main": "lib/proInterface.js",
@@ -8,15 +8,17 @@
   "devDependencies": {
     "chance": "^1.0.3",
     "expect.js": "~0.3.1",
-    "grunt": "~0.4.4",
-    "grunt-contrib-jshint": "~0.10.0",
-    "grunt-contrib-watch": "~0.6.1",
-    "grunt-mocha-test": "~0.10.2",
+    "grunt": "^1.0.1",
+    "grunt-contrib-jshint": "^1.0.0",
+    "grunt-contrib-watch": "^1.0.0",
+    "grunt-mocha-test": "^0.12.7",
     "injectr": "~0.5.1",
     "jshint": "~2.5.0",
-    "pretendr": "~0.5.2"
+    "mocha": "^2.5.3",
+    "pretendr": "^0.5.2"
   },
   "dependencies": {
+    "io-cache": "^0.2.0",
     "websocket": "^1.0.23"
   }
 }

@@ -19,6 +19,7 @@ describe('proInterface', function () {
     random,
     mockWebSocket,
     mockWsInstance,
+    mockIOCache,
     proInterface,
     proInterfaceInstance;
 
@@ -32,11 +33,16 @@ describe('proInterface', function () {
     mockWebSocket.template({
       send : function () {}
     });
+    mockIOCache = pretendr(function () {});
+    mockIOCache.template({
+      get: function () {}
+    });
     proInterface = injectr('../lib/proInterface.js', {
-      'events' : require('events'),
-      'util' : require('util'),
-      'websocket' : {
-        w3cwebsocket : mockWebSocket.mock
+      'events': require('events'),
+      'io-cache': mockIOCache.mock,
+      'util': require('util'),
+      'websocket': {
+        w3cwebsocket: mockWebSocket.mock
       }
     });
   });
@@ -61,6 +67,65 @@ describe('proInterface', function () {
       'action': 'authenticate',
       'protocol': '600',
       'password' : password
+    });
+  });
+  it("creates caches", function () {
+    proInterface();
+    expect(mockIOCache.instances.length).to.be.ok();
+  });
+  describe("created presentations cache", function () {
+    var
+      key;
+    beforeEach(function () {
+      createAndOpenInstance();
+      key = random.string();
+      mockIOCache.calls[0].args[0](key, cb.mock);
+    });
+    it("sends a presentationRequest", function () {
+      expect(sendCallArgument()).to.eql({
+        action: 'presentationRequest',
+        presentationPath: key
+      });
+    });
+    it("runs the callback when presentationCurrent is received", function () {
+      var item = createFullProPresenterItem(key);
+      sendMessageFromWs(item);
+      expect(cb.calls).to.have.length(1);
+    });
+    it("does not run the callback for a different item", function () {
+      var
+        differentItem = createFullProPresenterItem(random.string()),
+        item = createFullProPresenterItem(key);
+      sendMessageFromWs(differentItem);
+      expect(cb.calls).to.have.length(0);
+      sendMessageFromWs(item);
+      expect(cb.calls).to.have.length(1);
+    });
+    it("only runs the callback once", function () {
+      var item = createFullProPresenterItem(key);
+      sendMessageFromWs(item);
+      sendMessageFromWs(item);
+      expect(cb.calls).to.have.length(1);
+    });
+  });
+  describe("created stage display layouts cache", function () {
+    beforeEach(function () {
+      createAndOpenInstance();
+      mockIOCache.calls[1].args[0]('', cb.mock);
+    });
+    it("requests the stage display layouts list", function () {
+      expect(sendCallArgument()).to.eql({
+        action: 'stageDisplaySets'
+      });
+    });
+    it("passes the full set to the callback", function () {
+      var sets = random.unique(random.string, random.natural({ max: 5 }));
+      sendMessageFromWs({
+        'action': 'stageDisplaySets',
+        'stageDisplaySets': sets,
+        'stageDisplayIndex':1
+      });
+      expect(cb.calls[0].args[0]).to.eql(sets);
     });
   });
   describe('handling an auth response', function () {
@@ -116,169 +181,145 @@ describe('proInterface', function () {
     });
   });
   describe("#getStageDisplayLayouts", function() {
+    var stageDisplayData;
     beforeEach(createAndOpenInstance);
     beforeEach(authInstance);
-    it("sends a request to get the list of stage displays", function () {
-      proInterfaceInstance.getStageDisplayLayouts(cb.mock);
-      expect(sendCallArgument()).to.eql({
-        'action': 'stageDisplaySets'
-      });
+    beforeEach(function() {
+      stageDisplayData = mockIOCache.instances[1];
     });
-    it("returns the reply to the callback", function () {
+    it("gets the list of stage displays", function () {
       proInterfaceInstance.getStageDisplayLayouts(cb.mock);
-      sendMessageFromWs({
-        'action': 'stageDisplaySets',
-        'stageDisplaySets':['Default','Text only','Timer'],
-        'stageDisplayIndex':2
-      });
-      expect(cb.calls).to.have.length(1);
-      expect(cb.calls[0].args[0]).to.eql(['Default', 'Text only', 'Timer']);
-      expect(cb.calls[0].args[1]).to.equal('Timer');
+      expect(stageDisplayData.get.calls).to.have.length(1);
+      expect(stageDisplayData.get.calls[0].args[0]).to.be.a('function');
     });
-    it("calls the callback once only", function () {
+    it("passes an array of layouts to the callback", function () {
+      var layouts = random.unique(random.string, random.natural({ max: 10 }));
       proInterfaceInstance.getStageDisplayLayouts(cb.mock);
-      sendMessageFromWs({'action': 'stageDisplaySets','stageDisplaySets':[],'stageDisplayIndex':0});
-      sendMessageFromWs({'action': 'stageDisplaySets','stageDisplaySets':[],'stageDisplayIndex':0});
-      expect(cb.calls).to.have.length(1);
+      stageDisplayData.get.calls[0].callback(layouts);
+      expect(cb.calls[0].args[0]).to.eql(layouts);
     });
   });
   describe("#setStageDisplayLayout", function () {
+    var stageDisplayData;
     beforeEach(createAndOpenInstance);
     beforeEach(authInstance);
+    beforeEach(function () {
+      stageDisplayData = mockIOCache.instances[1];
+    });
     it("verifies the stageDisplaySets if not already done so", function () {
       proInterfaceInstance.setStageDisplayLayout(0);
-      expect(sendCallArgument()).to.eql({
-        'action': 'stageDisplaySets'
-      });
+      expect(stageDisplayData.get.calls).have.length(1);
     });
     it("sends the request to change the stage display", function () {
       proInterfaceInstance.setStageDisplayLayout(0);
-      sendMessageFromWs({'action': 'stageDisplaySets','stageDisplaySets':[],'stageDisplayIndex':0});
+      stageDisplayData.get.calls[0].callback([]);
       expect(sendCallArgument()).to.eql({
-        'action': 'stageDisplaySetIndex',
-        'stageDisplayIndex': 0
-      });
-    });
-    it("sends the request immediately if it already has the layout list", function () {
-      proInterfaceInstance.getStageDisplayLayouts(function () {});
-      sendMessageFromWs({'action': 'stageDisplaySets','stageDisplaySets':['Default','Text'],'stageDisplayIndex':0});
-      proInterfaceInstance.setStageDisplayLayout(1);
-      expect(sendCallArgument()).to.eql({
-        'action': 'stageDisplaySetIndex',
-        'stageDisplayIndex': 1
+        action: 'stageDisplaySetIndex',
+        stageDisplayIndex: 0
       });
     });
     it("accepts a layout name", function () {
-      proInterfaceInstance.setStageDisplayLayout('Default');
-      sendMessageFromWs({
-        'action': 'stageDisplaySets',
-        'stageDisplaySets':['Default','Text'],
-        'stageDisplayIndex':1
-      });
+      var
+        selectedLayout,
+        layouts = random.unique(
+          random.string, random.natural({ min: 2, max: 10 }));
+      selectedLayout = random.natural({ max: layouts.length - 1 });
+      proInterfaceInstance.setStageDisplayLayout(selectedLayout);
+      stageDisplayData.get.calls[0].callback(layouts);
       expect(sendCallArgument()).to.eql({
-        'action': 'stageDisplaySetIndex',
-        'stageDisplayIndex': 0
+        action: 'stageDisplaySetIndex',
+        stageDisplayIndex: selectedLayout
       });
     });
     it("fires a callback when done", function () {
       proInterfaceInstance.setStageDisplayLayout(0, cb.mock);
-      sendMessageFromWs({
-        'action': 'stageDisplaySets',
-        'stageDisplaySets':['Default','Text'],
-        'stageDisplayIndex':1
-      });
+      stageDisplayData.get.calls[0].callback([random.string()]);
       expect(cb.calls).to.have.length(0);
       sendMessageFromWs({
-        'action': 'stageDisplaySetIndex',
-        'stageDisplayIndex':0
+        action: 'stageDisplaySetIndex',
+        stageDisplayIndex: 0
       });
       expect(cb.calls).to.have.length(1);
+
+      // should not pass an error
       expect(cb.calls[0].args).to.have.property(0, undefined);
+
     });
     it("passes an error to the callback if layout is invalid", function () {
-      proInterfaceInstance.setStageDisplayLayout(3, cb.mock);
-      sendMessageFromWs({
-        'action': 'stageDisplaySets',
-        'stageDisplaySets':['Default','Text'],
-        'stageDisplayIndex':1
-      });
-      expect(cb.calls).to.have.length(1);
-      expect(cb.calls[0].args[0]).to.equal('Invalid layout');
-      proInterfaceInstance.setStageDisplayLayout('invalid', cb.mock);
-      expect(cb.calls).to.have.length(2);
-      expect(cb.calls[1].args[0]).to.equal('Invalid layout');
+      var
+        invalidLayoutMessage = 'Invalid layout',
+        layouts,
+        selected = random.natural({ min: 5, max: 20 });
+      layouts = random.unique(
+        random.string, random.natural({ min: 2, max: selected }));
+      proInterfaceInstance.setStageDisplayLayout(selected, cb.mock);
+      stageDisplayData.get.calls[0].callback(layouts);
+      expect(cb.calls[0].args[0]).to.equal(invalidLayoutMessage);
+
+      // Use the first layout in the list, then slice it out to make it invalid.
+      proInterfaceInstance.setStageDisplayLayout(layouts[0], cb.mock);
+      stageDisplayData.get.calls[0].callback(layouts.slice(1));
+
+      expect(cb.calls[1].args[0]).to.equal(invalidLayoutMessage);
     });
   });
   describe("slideChange event", function () {
+    var
+      item,
+      mockCache,
+      slideNum;
     beforeEach(createAndOpenInstance);
     beforeEach(authInstance);
     beforeEach(function () {
+      mockCache = mockIOCache.instances[0];
       proInterfaceInstance.on('slideChange', cb.mock);
-    });
-    it("gets slide details when presentationTriggerIndex fires", function () {
-      var title = random.sentence() + 'pro6';
+      item = createFullProPresenterItem(random.sentence() + 'pro6');
+      slideNum = random.natural({ max: item.numSlides - 1 });
       sendMessageFromWs({
         'action': 'presentationTriggerIndex',
-        'presentationPath': title,
-        'slideIndex':1
-      });
-      expect(sendCallArgument()).to.eql({
-        'action': 'presentationRequest',
-        'presentationPath': title
+        'presentationPath': item.presentation.presentationPath,
+        'slideIndex': slideNum
       });
     });
-    it("fires once when slide details are received", function () {
-      var
-        itemDetails,
-        title = random.sentence() + 'pro6';
-      sendMessageFromWs({
-        'action': 'presentationTriggerIndex',
-        'presentationPath': title,
-        'slideIndex':1
-      });
-      expect(cb.calls).to.have.length(0);
-      itemDetails = createFullProPresenterItem(title);
-      sendMessageFromWs(itemDetails);
-      expect(cb.calls).to.have.length(1);
-
-      // only once
-      sendMessageFromWs(itemDetails);
+    it("requests slide details on presentationTriggerIndex", function () {
+      expect(mockCache.get.calls).to.have.length(1);
+      expect(mockCache.get.calls[0].args).to.have.property(
+        0, item.presentation.presentationPath);
+    });
+    it("emits when the callback is received", function () {
+      mockCache.get.calls[0].callback(createFullProPresenterItem(
+        item.presentation.presentationPath));
       expect(cb.calls).to.have.length(1);
     });
-    it("fires only with correct slide details", function () {
-      var
-        item,
-        titles = random.unique(function () {
-          return random.sentence() + 'pro6';
-        }, 2);
-
-      sendMessageFromWs({
-        action: 'presentationTriggerIndex',
-        presentationPath: titles[0],
-        slideIndex: 1
-      });
-      sendMessageFromWs(createFullProPresenterItem(titles[1]));
-      expect(cb.calls).to.have.length(0);
-      item = createFullProPresenterItem(titles[0]);
-      sendMessageFromWs(item);
-      expect(cb.calls).to.have.length(1);
-      expect(cb.calls[0].args[0]).to.eql(item.presentation);
+    it("sends the presentationPath to the listener", function () {
+      mockCache.get.calls[0].callback(item);
+      expect(cb.calls[0].args[0]).to.have.property(
+        'presentationPath', item.presentation.presentationPath);
     });
-    it("gets item details only once", function () {
-      var
-        item,
-        title = random.sentence() + 'pro6';
-      item = createFullProPresenterItem(title);
-      sendMessageFromWs(item);
-      sendMessageFromWs({
-        action: 'presentationTriggerIndex',
-        presentationPath: title,
-        slideIndex: 1
-      });
-      expect(cb.calls).to.have.length(1);
-      expect(cb.calls[0].args[0]).to.eql(item.presentation);
+    it("sends slide details to the listener", function () {
+      mockCache.get.calls[0].callback(item);
+      expect(cb.calls[0].args[0]).to.have.property(
+        'currentSlide');
+      expect(cb.calls[0].args[0].currentSlide).to.have.property(
+        'slideIndex', slideNum.toString());
+      expect(cb.calls[0].args[0].currentSlide.slideText)
+        .to.equal(findSlideByNumber(item, slideNum).slideText)
+        .and.to.be.ok(); // Make sure the test has got it right.
     });
   });
+
+  function findSlideByNumber(item, slideNum) {
+    var ret;
+    item.presentation.presentationSlideGroups.some(function (group) {
+      return group.groupSlides.forEach(function (slide) {
+        if (parseInt(slide.slideIndex, 10) === slideNum) {
+          ret = slide;
+          return true;
+        }
+      });
+    });
+    return ret;
+  }
 
   function createAndOpenInstance() {
     proInterfaceInstance = proInterface();
@@ -310,7 +351,7 @@ describe('proInterface', function () {
     });
   }
   function createFullProPresenterItem(title) {
-    var slideIndex;
+    var slideIndex = 0;
     return {
       'action': 'presentationCurrent',
       'presentation': {
@@ -332,15 +373,17 @@ describe('proInterface', function () {
                 'slideEnabled': 1,
                 'slideText': random.n(
                   random.sentence,
-                  random.natural({ max: 4 })
+                  random.natural({ min: 1, max: 4 })
                 ).join('\r\n'),
                 'slideNotes': '' + (random.bool() && random.sentence()),
                 'slideImage': ''
               };
-            }, random.natural({ max: 4 }))
+            }, random.natural({ min: 2, max: 5 }))
           };
-      }, random.natural({ min : 1, max : 4 })),
+      }, random.natural({ min : 2, max : 5 })),
       'presentationCurrentLocation': random.natural()
-    }};
+    },
+    numSlides: slideIndex
+    };
   }
 });
