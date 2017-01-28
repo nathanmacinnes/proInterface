@@ -1,6 +1,6 @@
 {
   "name": "prointerface",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A Javascript interface to interact with ProPresenter",
   "main": "lib/proInterface.js",
   "repository": "",
@@ -15,7 +15,7 @@
     "injectr": "~0.5.1",
     "jshint": "~2.5.0",
     "mocha": "^2.5.3",
-    "pretendr": "^0.5.2"
+    "pretendr": "^0.7.0"
   },
   "dependencies": {
     "io-cache": "^0.2.0",
