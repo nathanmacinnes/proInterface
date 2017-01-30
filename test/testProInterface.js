@@ -168,37 +168,37 @@ describe('ProInterface', function () {
           });
         });
       });
-      describe("stage display cache init function", function () {
-        var
-          cb,
-          ioCacheCall,
-          stageDisplaySetsEvent;
-        beforeEach(function () {
-          cb = pretendr();
-          ioCacheCall = mockIOCache.findCall(function (arg) {
-            return arg.length === 1;
+    });
+    describe("stage display cache init function", function () {
+      var
+        cb,
+        ioCacheCall,
+        stageDisplaySetsEvent;
+      beforeEach(function () {
+        cb = pretendr();
+        ioCacheCall = mockIOCache.findCall(function (arg) {
+          return arg.length === 1;
+        });
+        ioCacheCall.args[0](cb.mock);
+        stageDisplaySetsEvent = socketInterface.on.findCall(
+          ['stageDisplaySets']);
+      });
+      it("sends a request to get the stage displays", function () {
+        expect(socketInterface.send.findCall(['stageDisplaySets']))
+          .to.be.ok();
+      });
+      it("attaches an event to receive the stage displays", function () {
+        expect(stageDisplaySetsEvent).to.be.ok();
+        expect(socketInterface.on.calls[1].args[1])
+          .to.be.a('function');
+      });
+      describe("stage display cache event handler", function () {
+        it("returns the stageDisplaySets property", function () {
+          var sets = random.string();
+          stageDisplaySetsEvent.args[1]({
+            'stageDisplaySets' : sets
           });
-          ioCacheCall.args[0](cb.mock);
-          stageDisplaySetsEvent = socketInterface.on.findCall(
-            ['stageDisplaySets']);
-        });
-        it("sends a request to get the stage displays", function () {
-          expect(socketInterface.send.findCall(['stageDisplaySets']))
-            .to.be.ok();
-        });
-        it("attaches an event to receive the stage displays", function () {
-          expect(stageDisplaySetsEvent).to.be.ok();
-          expect(socketInterface.on.calls[1].args[1])
-            .to.be.a('function');
-        });
-        describe("stage display cache event handler", function () {
-          it("returns the stageDisplaySets property", function () {
-            var sets = random.string();
-            stageDisplaySetsEvent.args[1]({
-              'stageDisplaySets' : sets
-            });
-            expect(cb.calls[0].args[0]).to.equal(sets);
-          });
+          expect(cb.calls[0].args[0]).to.equal(sets);
         });
       });
     });
