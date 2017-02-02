@@ -82,18 +82,14 @@ describe('ProInterface', function () {
       });
     });
     it("creates a cache for presentations", function () {
-      var ioCacheCall = mockIOCache.findCall(function (arg) {
-        return arg.length === 2;
-      });
+      var ioCacheCall = getCacheByNumArgs(2);
       expect(ioCacheCall).to.be.ok();
       ioCacheCall.args[0]();
       expect(mockOsi.instances[0].pretendr.send.calls[0].args[0])
         .to.equal('presentationRequest');
     });
     it("creates a cache for stage display layouts", function () {
-      var ioCacheCall = mockIOCache.findCall(function (arg) {
-        return arg.length === 1;
-      });
+      var ioCacheCall = getCacheByNumArgs(1);
       expect(ioCacheCall).to.be.ok();
       ioCacheCall.args[0]();
       expect(mockOsi.instances[0].pretendr.send.calls[0].args[0])
@@ -102,9 +98,7 @@ describe('ProInterface', function () {
     describe("presentations cache init function", function () {
       var initFn;
       beforeEach(function () {
-        initFn = mockIOCache.findCall(function (arg) {
-          return arg.length === 2;
-        }).args[0];
+        initFn = getCacheByNumArgs(2).args[0];
       });
       it("sends a request with the presentationPath", function () {
         var key = random.string();
@@ -176,9 +170,7 @@ describe('ProInterface', function () {
         stageDisplaySetsEvent;
       beforeEach(function () {
         cb = pretendr();
-        ioCacheCall = mockIOCache.findCall(function (arg) {
-          return arg.length === 1;
-        });
+        ioCacheCall = getCacheByNumArgs(1);
         ioCacheCall.args[0](cb.mock);
         stageDisplaySetsEvent = socketInterface.on.findCall(
           ['stageDisplaySets']);
@@ -227,5 +219,24 @@ describe('ProInterface', function () {
           presentationObject);
       });
     });
+    describe("getStageDisplayLayouts", function () {
+      var
+        cb,
+        ioCacheCall;
+      beforeEach(function () {
+        cb = pretendr();
+        ioCacheCall = getCacheByNumArgs(1);
+      });
+      it("retrieves the stage display layouts from the cache", function () {
+        instance.getStageDisplayLayouts(cb.mock);
+        expect(ioCacheCall.pretendr.get.calls).to.have.length(1);
+        expect(ioCacheCall.pretendr.get.calls[0].args[0]).to.equal(cb.mock);
+      });
+    });
   });
+  function getCacheByNumArgs(args) {
+    return mockIOCache.findCall(function (arg) {
+      return arg.length === args;
+    });
+  }
 });
